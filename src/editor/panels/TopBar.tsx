@@ -35,13 +35,43 @@ const TOOLS: { id: Tool; icon: JSX.Element; label: string; key: string }[] = [
   { id: 'emit', icon: <IconSpray size={15} />, label: 'Partikel sprühen', key: 'P' },
 ];
 
+/** Tool buttons plus radius/strength options; used in the top bar and in the phone tool sheet. */
+export function ToolStrip({ showLabels = false }: { showLabels?: boolean }) {
+  const tool = useStore((s) => s.tool);
+  const toolRadius = useStore((s) => s.toolRadius);
+  const toolStrength = useStore((s) => s.toolStrength);
+  return (
+    <>
+      <div className="tools">
+        {TOOLS.map((t) => (
+          <button key={t.id} className={`tool ${tool === t.id ? 'on' : ''}`} onClick={() => setTool(t.id)} title={`${t.label} (${t.key})`}>
+            {t.icon}
+            {showLabels && <span className="tool-label">{t.label}</span>}
+          </button>
+        ))}
+      </div>
+      {tool !== 'select' && (
+        <div className="tool-opts">
+          <label>
+            Radius
+            <input type="range" min={2} max={50} step={0.5} value={toolRadius} onChange={(e) => getStore().set({ toolRadius: +e.target.value })} />
+          </label>
+          {tool !== 'paint' && tool !== 'erase' && (
+            <label>
+              Stärke
+              <input type="range" min={20} max={800} step={5} value={toolStrength} onChange={(e) => getStore().set({ toolStrength: +e.target.value })} />
+            </label>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function TopBar() {
   const playing = useStore((s) => s.playing);
   const canUndo = useStore((s) => s.canUndo);
   const canRedo = useStore((s) => s.canRedo);
-  const tool = useStore((s) => s.tool);
-  const toolRadius = useStore((s) => s.toolRadius);
-  const toolStrength = useStore((s) => s.toolStrength);
   const name = useStore((s) => s.scene.name);
   const showPerf = useStore((s) => s.showPerf);
   const quality = useStore((s) => s.quality);
@@ -62,7 +92,7 @@ export function TopBar() {
       </div>
 
       <button className="btn primary" onClick={() => getStore().set({ modal: 'presets' })} title="Effektbibliothek (L)">
-        <IconGrid size={14} /> Bibliothek
+        <IconGrid size={14} /> <span className="lbl">Bibliothek</span>
       </button>
       <div className="scene-name" title={name}>
         {name}
@@ -82,35 +112,17 @@ export function TopBar() {
       </button>
 
       <div className="divider" />
-      <div className="tools">
-        {TOOLS.map((t) => (
-          <button key={t.id} className={`tool ${tool === t.id ? 'on' : ''}`} onClick={() => setTool(t.id)} title={`${t.label} (${t.key})`}>
-            {t.icon}
-          </button>
-        ))}
+      <div className="topbar-tools">
+        <ToolStrip />
       </div>
-      {tool !== 'select' && (
-        <div className="tool-opts">
-          <label>
-            Radius
-            <input type="range" min={2} max={50} step={0.5} value={toolRadius} onChange={(e) => getStore().set({ toolRadius: +e.target.value })} />
-          </label>
-          {tool !== 'paint' && tool !== 'erase' && (
-            <label>
-              Stärke
-              <input type="range" min={20} max={800} step={5} value={toolStrength} onChange={(e) => getStore().set({ toolStrength: +e.target.value })} />
-            </label>
-          )}
-        </div>
-      )}
 
       <div className="grow" />
 
       <button className="btn ghost" onClick={() => mutate()} title="Evolve: Variation erzeugen (M)">
-        <IconDna size={14} /> Evolve
+        <IconDna size={14} /> <span className="lbl">Evolve</span>
       </button>
       <button
-        className={`btn ghost ${compare.a && compare.b ? 'ab-ready' : ''}`}
+        className={`btn ghost ab-btn ${compare.a && compare.b ? 'ab-ready' : ''}`}
         onClick={toggleCompare}
         title="A/B-Vergleich: 1. Klick speichert A, 2. Klick speichert B, danach umschalten (C)"
       >
@@ -134,10 +146,10 @@ export function TopBar() {
         <option value="high">High (100%)</option>
         <option value="ultra">Ultra (150%)</option>
       </select>
-      <button className={`icon-btn ${showPerf ? 'on' : ''}`} onClick={() => getStore().set({ showPerf: !showPerf })} title="Performance-Overlay (F)">
+      <button className={`icon-btn perf-btn ${showPerf ? 'on' : ''}`} onClick={() => getStore().set({ showPerf: !showPerf })} title="Performance-Overlay (F)">
         <IconChart size={15} />
       </button>
-      <button className="icon-btn" onClick={() => fileRef.current?.click()} title="Importieren (JSON oder Bild)">
+      <button className="icon-btn import-btn" onClick={() => fileRef.current?.click()} title="Importieren (JSON oder Bild)">
         <IconUpload size={15} />
       </button>
       <input
@@ -153,9 +165,9 @@ export function TopBar() {
       />
       <button className={`btn ${recording.active ? 'rec' : ''}`} onClick={() => getStore().set({ modal: 'export' })} title="Export (Strg+E)">
         {recording.active ? <IconRecord size={12} /> : <IconDownload size={14} />}
-        {recording.active ? `REC ${recording.elapsed.toFixed(1)}s` : 'Export'}
+        <span className="lbl">{recording.active ? `REC ${recording.elapsed.toFixed(1)}s` : 'Export'}</span>
       </button>
-      <button className="icon-btn" onClick={() => getStore().set({ modal: 'palette' })} title="Befehlspalette (Strg+K)">
+      <button className="icon-btn palette-btn" onClick={() => getStore().set({ modal: 'palette' })} title="Befehlspalette (Strg+K)">
         <IconCommand size={15} />
       </button>
       <button className="icon-btn" onClick={() => getStore().set({ presentation: true })} title="Präsentationsmodus (Tab)">

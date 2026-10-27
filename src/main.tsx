@@ -79,7 +79,13 @@ async function boot() {
 
   if (source === 'share') store.toast(`Geteilter Effekt „${scene.name}“ geladen`, 'success');
   else if (source === 'autosave') store.toast('Letzte Sitzung wiederhergestellt', 'info');
-  else setTimeout(() => store.toast('Willkommen! Öffne die Bibliothek (L) oder drücke Strg+K für alle Befehle.', 'info'), 600);
+  else {
+    const touch = window.matchMedia('(max-width: 820px)').matches;
+    const hello = touch
+      ? 'Willkommen! Tippe oben auf die Bibliothek oder probiere unten die Werkzeuge.'
+      : 'Willkommen! Öffne die Bibliothek (L) oder drücke Strg+K für alle Befehle.';
+    setTimeout(() => store.toast(hello, 'info'), 600);
+  }
 }
 
 void boot();

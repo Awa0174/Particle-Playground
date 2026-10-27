@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getStore, Tool, useStore } from './store';
 import { engine } from './engine';
-import { TopBar } from './panels/TopBar';
+import { ToolStrip, TopBar } from './panels/TopBar';
 import { Outliner } from './panels/Outliner';
 import { Inspector } from './panels/Inspector';
 import { Timeline } from './panels/Timeline';
@@ -30,6 +30,39 @@ function usePanelSize(key: string, initial: number): [number, (v: number) => voi
     }
   };
   return [v, set];
+}
+
+/** Phone-sized layout: the viewport fills the screen, panels open as sheets from a tab bar. */
+const MOBILE_QUERY = '(max-width: 820px)';
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const on = () => setMobile(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return mobile;
+}
+
+type Sheet = 'none' | 'tools' | 'scene' | 'inspect' | 'timeline';
+const SHEETS: { id: Exclude<Sheet, 'none'>; label: string }[] = [
+  { id: 'tools', label: 'Werkzeuge' },
+  { id: 'scene', label: 'Szene' },
+  { id: 'inspect', label: 'Eigenschaften' },
+  { id: 'timeline', label: 'Timeline' },
+];
+
+function MobileTabs({ sheet, setSheet }: { sheet: Sheet; setSheet: (s: Sheet) => void }) {
+  return (
+    <nav className="m-tabs" aria-label="Bereiche">
+      {SHEETS.map((t) => (
+        <button key={t.id} className={sheet === t.id ? 'on' : ''} aria-pressed={sheet === t.id} onClick={() => setSheet(sheet === t.id ? 'none' : t.id)}>
+          {t.label}
+        </button>
+      ))}
+    </nav>
+  );
 }
 
 function Splitter({ dir, onDrag }: { dir: 'x' | 'y'; onDrag: (delta: number) => void }) {
@@ -134,12 +167,16 @@ export function App() {
   const [left, setLeft] = usePanelSize('left', 250);
   const [right, setRight] = usePanelSize('right', 330);
   const [bottom, setBottom] = usePanelSize('bottom', 150);
+  const mobile = useIsMobile();
+  const [sheet, setSheet] = useState<Sheet>('none');
   useShortcuts();
 
+  // The element tree stays the same on phones (so the viewport never remounts); CSS turns panels into sheets.
+  const appClass = ['app', presentation && 'presentation', mobile && 'mobile', mobile && `sheet-${sheet}`].filter(Boolean).join(' ');
   return (
-    <div className={`app ${presentation ? 'presentation' : ''}`}>
+    <div className={appClass}>
       {!presentation && <TopBar />}
-      <div className="workspace" style={{ gridTemplateColumns: presentation ? '1fr' : `${left}px 5px 1fr 5px ${right}px` }}>
+      <div className="workspace" style={mobile ? undefined : { gridTemplateColumns: presentation ? '1fr' : `${left}px 5px 1fr 5px ${right}px` }}>
         {!presentation && (
           <>
             <aside className="panel left">
@@ -148,7 +185,7 @@ export function App() {
             <Splitter dir="x" onDrag={(d) => setLeft(Math.min(420, Math.max(190, left + d)))} />
           </>
         )}
-        <div className="center" style={{ gridTemplateRows: presentation ? '1fr' : `1fr 5px ${bottom}px` }}>
+        <div className="center" style={mobile ? undefined : { gridTemplateRows: presentation ? '1fr' : `1fr 5px ${bottom}px` }}>
           <Viewport />
           {!presentation && (
             <>
@@ -165,7 +202,13 @@ export function App() {
             </aside>
           </>
         )}
+        {mobile && !presentation && sheet === 'tools' && (
+          <div className="m-sheet m-tools">
+            <ToolStrip showLabels />
+          </div>
+        )}
       </div>
+      {mobile && !presentation && <MobileTabs sheet={sheet} setSheet={setSheet} />}
       {presentation && (
         <button className="exit-presentation" onClick={() => getStore().set({ presentation: false })}>
           Esc · Präsentationsmodus beenden
